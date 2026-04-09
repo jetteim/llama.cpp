@@ -1387,7 +1387,7 @@ struct vk_op_im2col_push_constants {
     uint32_t IW; uint32_t IH;
     uint32_t OW; uint32_t OH;
     uint32_t KW; uint32_t KH;
-    uint32_t pelements;
+    uint32_t OH_batch;
     uint32_t CHW;
     int32_t s0; int32_t s1;
     int32_t p0; int32_t p1;
@@ -9941,7 +9941,7 @@ static void ggml_vk_op_f32(ggml_backend_vk_context * ctx, vk_context& subctx, co
 
             const uint32_t batch = src1->ne[is_2D ? 3 : 2];
 
-            elements = { OW * KW * KH, OH, batch * IC };
+            elements = { IC * KH * KW, OW, OH * batch };
             elements[1] = std::min(elements[1], ctx->device->properties.limits.maxComputeWorkGroupCount[1]);
             elements[2] = std::min(elements[2], ctx->device->properties.limits.maxComputeWorkGroupCount[2]);
         } break;
@@ -11604,7 +11604,6 @@ static void ggml_vk_im2col(ggml_backend_vk_context * ctx, vk_context& subctx, co
     const uint32_t offset_delta = src1->nb[is_2D ? 2 : 1] / 4; // nb is byte offset, src is type float32
     const uint32_t batch_offset = src1->nb[is_2D ? 3 : 2] / 4; // nb is byte offset, src is type float32
 
-    const uint32_t pelements = OW * KW * KH;
     const uint32_t batch = src1->ne[is_2D ? 3 : 2];
 
     const ggml_backend_vk_buffer_context * d_buf_ctx = (ggml_backend_vk_buffer_context *)dst->buffer->context;
@@ -11616,7 +11615,7 @@ static void ggml_vk_im2col(ggml_backend_vk_context * ctx, vk_context& subctx, co
         dst_addr,
         batch_offset, offset_delta,
         IC, IW, IH, OW, OH, KW, KH,
-        pelements,
+        OH * batch,
         IC * KH * KW,
         s0, s1, p0, p1, d0, d1, batch * IC
     });
